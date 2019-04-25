@@ -36,7 +36,7 @@ def verify_single_layer(input, neuron_count, weights, activation, bias):
   assert np.sum(output - expected) == 0.0
   return (output, expected)
 
-def verify_whole_network(input, loss, eta, layer_defs):
+def verify_whole_network(input, loss, eta, layer_defs, draw=False):
   expected = None
   layer_input = input
   n = Network(loss, eta)
@@ -47,6 +47,8 @@ def verify_whole_network(input, loss, eta, layer_defs):
   output = n.output(input)
   #print (output, expected)
   assert np.sum(output - expected) == 0.0
+  if draw:
+    n.draw(input)
   return (output, expected)
 
 class TestBasics(unittest.TestCase):
@@ -92,4 +94,4 @@ class TestBasics(unittest.TestCase):
     layer2 = LayerDefinition(layer2_neuron_count, layer2_activation, layer2_bias, layer2_weights)
     layer_defs.append(layer2)
 
-    (output, expected) = verify_whole_network(input, loss, eta, layer_defs)
+    (output, expected) = verify_whole_network(input, loss, eta, layer_defs, draw=True)
