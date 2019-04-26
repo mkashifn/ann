@@ -3,14 +3,15 @@ import numpy as np
 from layer import Layer
 from graphviz import Digraph
 from graphviz import Graph
-g_layer_count = 0
-g_weight_count = 1
+
 
 class Network:
   def __init__(self, loss, eta):
     self.layers = []
     self.loss = loss
     self.eta = eta # learning rate
+    self.layer_count = 0
+    self.weight_count = 1
 
   def add_layer(self, count, activation, bias=0.0, initial_weights=None):
     self.layers.append(Layer(count, activation, bias, initial_weights))
@@ -80,17 +81,15 @@ class Network:
     np_formatter = {'float_kind':lambda x: "%.9g" % x}
 
     def increment_glc():
-      global g_layer_count
-      g_layer_count += 1
+      self.layer_count += 1
 
     def increment_gwc():
-      global g_weight_count
-      g_weight_count += 1
+      self.weight_count += 1
 
     def draw_cluster(name, length, values, fillcolor="#FFFFFF", subscript="", targets=None):
       names = []
       with graph.subgraph(name='cluster_{name}'.format(name=name)) as c:
-        c.attr(label='{name}\n(layer {glc})'.format(name=name, glc = g_layer_count))
+        c.attr(label='{name}\n(layer {glc})'.format(name=name, glc = self.layer_count))
         increment_glc()
 
         for i in range(length):
@@ -120,7 +119,7 @@ class Network:
       for d in dst:
         for s in src:
           color = auto_colors[i % len(auto_colors)]
-          graph.edge(s, d, fontcolor=color, color=color, label='w{wl} = {weight}'.format(wl=g_weight_count, weight=w[i]))
+          graph.edge(s, d, fontcolor=color, color=color, label='w{wl} = {weight}'.format(wl=self.weight_count, weight=w[i]))
           increment_gwc()
           i += 1
 
