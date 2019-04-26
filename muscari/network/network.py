@@ -3,6 +3,8 @@ import numpy as np
 from layer import Layer
 from graphviz import Digraph
 from graphviz import Graph
+g_layer_count = 0
+g_weight_count = 1
 
 class Network:
   def __init__(self, loss, eta):
@@ -56,31 +58,39 @@ class Network:
     A = targets
     B = self.feed_forward(inputs)
     print ("Loss:", self.loss(A, B))
-    self.propagate_back(targets)
+    #self.propagate_back(targets)
     #print ("Loss:", self.loss(A, self.feed_forward(inputs)))
 
-  def draw(self, input, file="ann", dir="draw", view=True, cleanup=False):
-    """
-    dot = Digraph(comment='The Round Table')
-    dot.node('A', 'King Arthur')
-    dot.node('B', 'Sir Bedevere the Wise')
-    dot.node('L', 'Sir Lancelot the Brave')
-    dot.edges(['AB', 'AL'])
-    dot.edge('B', 'L', constraint='false')
-    dot.render(file, dir, view=view, cleanup=cleanup)
-    """
-    graph = Graph(directory='graphs', format='pdf',
+  def draw(self, inputs, targets, file="ann", dir="draw", view=True, cleanup=False):
+    graph = Digraph(directory='graphs', format='pdf',
                   graph_attr=dict(ranksep='2', rankdir='LR', color='white', splines='line'),
                   node_attr=dict(label='', shape='circle', width='0.1'))
+    graph.attr(label='Hiw')
+    np_formatter = {'float_kind':lambda x: "%.9g" % x}
 
+    def increment_glc():
+      global g_layer_count
+      g_layer_count += 1
 
-    def draw_cluster(name, length, fillcolor="#FFFFFF", subscript=""):
+    def increment_gwc():
+      global g_weight_count
+      g_weight_count += 1
+
+    def draw_cluster(name, length, values, fillcolor="#FFFFFF", subscript="", targets=None):
       names = []
       with graph.subgraph(name='cluster_{name}'.format(name=name)) as c:
-        c.attr(label=name)
+        c.attr(label='{name}\n(layer {glc})'.format(name=name, glc = g_layer_count))
+        increment_glc()
+
         for i in range(length):
           name_str = '{name}_{i}'.format(name=name, i=i)
-          label = '{id}{ss}-{i}'.format(ss=subscript,id=name[0],i=i)
+          outcome = values[:,i]
+          label = '{id}{ss}-{i}\n= {val}'.format(ss=subscript,id=name[0],i=i, val='{}'.format(np.array2string(outcome, formatter=np_formatter)))
+          if targets is not None:
+            target = targets[:,i]
+            loss = self.loss(target, outcome) / targets.shape[1]
+            label += '\ntarget: {}'.format(np.array2string(target, formatter=np_formatter))
+            label += '\nloss: {}'.format(np.array2string(loss, formatter=np_formatter))
           #label = "\$\sigma_1\$"
           #label = u'\u0220' #Unicode: https://unicode-table.com/en/#control-character
           c.node(name_str, label, color='black',style='filled',fillcolor=fillcolor)
@@ -88,28 +98,39 @@ class Network:
           names.append(name_str)
       return names
 
-    def draw_connections(src, dst):
-      for s in src:
-        for d in dst:
-          graph.edge(s, d)
+    def draw_connections(src, dst, dst_layer):
+      auto_colors = ['#00A2EB','#4BC000','#9966FF','#FF7700','#808000','#800000','#0020F0','#00F0F0','#8463FF','#E6194B']
+      w = np.array([[]])
+      for n in dst_layer.neurons:
+        w = np.append(w, n.w)
+      w = w.flatten()
 
-    src = draw_cluster('input', input.shape[1], "#FFFF00")
+      i = 0;
+      for d in dst:
+        for s in src:
+          color = auto_colors[i % len(auto_colors)]
+          graph.edge(s, d, fontcolor=color, color=color, label='w{wl} = {weight}'.format(wl=g_weight_count, weight=w[i]))
+          increment_gwc()
+          i += 1
+
+    src = draw_cluster('input', inputs.shape[1], inputs, "#FFFF00")
     i = 1
+    layer_input = inputs
     for layer in self.layers[:-1]:
-      dst = draw_cluster('hidden_layer_{i}'.format(i=i), layer.count, "#04ADFC", i)
+      layer_output = layer.output(layer_input)
+      dst = draw_cluster('hidden_layer_{i}'.format(i=i), layer.count, layer_output, "#04ADFC", i)
       i += 1
-      draw_connections(src, dst)
+      draw_connections(src, dst, layer)
       src = dst
+      layer_input = layer_output
 
     layer = self.layers[-1]
-    dst = draw_cluster('output', layer.count, "#00FF00")
-    draw_connections(src, dst)
-      
-    """
-    source_active = [0, 1, 2, 3]
-    sink_active = [2, 3]
+    dst = draw_cluster('output', layer.count, layer.output(layer_input), "#00FF00", targets=targets)
+    draw_connections(src, dst, layer)
+    A = targets
+    B = self.feed_forward(inputs)
+    tl = self.loss(A, B)
+    tl = np.array2string(tl, formatter=np_formatter)
+    graph.attr(label='{file}, total loss = {tl}'.format(file=file, tl=tl))
 
-    for i_input in source_active:
-        for i_output in sink_active:
-            graph.edge('input_{i_input}'.format(i_input=i_input), 'output_{i_output}'.format(i_output=i_output))"""
     graph.render(file, dir, view=view, cleanup=cleanup)
