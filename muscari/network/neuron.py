@@ -29,7 +29,7 @@ class Neuron:
 
   def output(self, inputs):
     if self.w is None:
-      self.w = np.random.rand(inputs.shape[0])
+      self.w = np.random.rand(inputs.shape[1])
     weighted_sum = np.sum(inputs * self.w) + self.b
     self.inputs = inputs
     self.o = self.a.fx(weighted_sum)

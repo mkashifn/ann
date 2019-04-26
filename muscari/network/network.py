@@ -32,7 +32,7 @@ class Network:
     i = 0
     sum_sigma_weights = 0
     for neuron in layers[0].neurons:
-      sigma = -1 * neuron.sigma(targets[:,i])
+      sigma = np.array([-1 * neuron.sigma(targets[:,i])])
       sum_sigma_weights += neuron.w * sigma
       #print("sum_sigma:", sum_sigma_weights)
       errors = neuron.inputs * sigma
@@ -40,12 +40,13 @@ class Network:
       #print ("Target:", targets[:,i], "Sigma:", sigma, "W:", neuron.w, "New Weights:", new_weights)
       neuron.update_weights(new_weights)
       i += 1
+    #print("OUTPUT SIGMA: ", sum_sigma_weights)
     layers = layers[1:] # other layers
     for layer in layers:
       new_sum_sigma_weights = 0
       i = 0
       for neuron in layer.neurons:
-        sigma = sum_sigma_weights[:,i] * neuron.sigma()
+        sigma = np.array([sum_sigma_weights[:,i]]) * neuron.sigma()
         new_sum_sigma_weights += neuron.w * sigma
         errors = neuron.inputs * sigma
         new_weights = np.subtract(neuron.w, self.eta * errors)
@@ -53,13 +54,23 @@ class Network:
         neuron.update_weights(new_weights)
         i += 1
       sum_sigma_weights = new_sum_sigma_weights
+      #print("LAYER SIGMA: ", sum_sigma_weights)
 
-  def train(self, inputs, targets):
-    A = targets
-    B = self.feed_forward(inputs)
-    print ("Loss:", self.loss(A, B))
-    #self.propagate_back(targets)
-    #print ("Loss:", self.loss(A, self.feed_forward(inputs)))
+  def train(self, inputs, targets, epochs):
+    batch_size = inputs.shape[0]
+    for i in range(epochs):
+      #A = targets
+      #B = self.feed_forward(inputs)
+      #self.propagate_back(np.array(targets))
+      for b in range(batch_size):
+        A = targets
+        B = self.feed_forward(np.array([inputs[b,:]]))
+        target = np.array([targets[b,:]])
+        self.propagate_back(target)
+
+      if (i%100) == 0:
+        print ("Epoch:", i, "    Loss:", self.loss(A, B))
+    print ("Loss:", self.loss(A, self.feed_forward(inputs)))
 
   def draw(self, inputs, targets, file="ann", dir="draw", view=True, cleanup=False):
     graph = Digraph(directory='graphs', format='pdf',

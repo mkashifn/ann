@@ -14,7 +14,10 @@ class Layer:
     self.neurons = []
     self.count = count
     for i in range(count):
-      neuron_weight = np.array([initial_weights[i,:]])
+      if initial_weights is not None:
+        neuron_weight = np.array([initial_weights[i,:]])
+      else:
+       neuron_weight = None
       self.neurons.append(Neuron(activation, bias, neuron_weight))
 
   def output(self, inputs):

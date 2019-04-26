@@ -48,7 +48,7 @@ def verify_whole_network(input, loss, eta, layer_defs, draw=False):
   #print (output, expected)
   assert np.sum(output - expected) == 0.0
   if draw:
-    n.draw(input, expected)
+    n.draw(input, expected, file="unittest_verify_whole_network", cleanup=True)
   return (output, expected)
 
 class TestBasics(unittest.TestCase):
