@@ -25,9 +25,9 @@ class Sequential:
 
   def add_layer(self, neuron_count, activation, bias, initial_weights=None, input_size=None):
     # Validate the inputs
-    if self.next_layer_input is None and input_size is None:
+    if self.layer_input_size is None and input_size is None:
       raise ValueError('input_size needs to be defined for the very first layer')
-    if self.next_layer_input is not None and input_size is not None:
+    if self.layer_input_size is not None and input_size is not None:
       raise ValueError('input_size is not required for this layer')
     if input_size is not None:
       layer_input_size = input_size
@@ -41,7 +41,8 @@ class Sequential:
     if initial_weights.shape != expected_weights_shape:
       warnings.warn("wights matrix is not properly formed, expected {e} vs actual {a}".format(e =expected_weights_shape, a=initial_weights.shape), UserWarning)
       initial_weights.shape = expected_weights_shape
-    self.layers.append(Layer(activation, bias, weights))
+    self.layers.append(Layer(activation, bias, initial_weights))
+    self.layer_input_size = neuron_count
 
   def feed_forward(self, input):
     output = None
@@ -50,3 +51,24 @@ class Sequential:
       input = output
     self.o = output
     return self.o
+  
+  def output(self, input):
+    return self.feed_forward(input)
+
+  def update_layer_weights(self, layer, sigma, eta):
+    d_weights = np.dot(layer.i.T, sigma) * eta
+    new_weights = layer.w - d_weights
+    old_weights = layer.w
+    layer.w = new_weights
+    return old_weights
+
+  def propagate_back(self, targets):
+    layers = self.layers[::-1] # reverse, need to start from output layer
+    layer = layers[0]
+    sigma = -(targets - layer.o)*layer.a.dfx(layer.o)
+    old_weights = self.update_layer_weights(layer, sigma, self.eta)
+    layers = layers[1:] # other layers
+    for layer in layers:
+      sigma = np.dot(sigma, old_weights.T * layer.a.dfx(layer.o))
+      old_weights = self.update_layer_weights(layer, sigma, self.eta)
+    
