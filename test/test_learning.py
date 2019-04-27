@@ -7,6 +7,8 @@ from muscari.network.network import Network
 from muscari.network.sequential import Sequential
 from muscari.math.functions import sigmoid
 from muscari.math.estimators import mse
+from utils.disk import save_object, load_object
+
 #python -m unittest discover
 class TestLearning(unittest.TestCase):
   def setUp(self):
@@ -85,4 +87,11 @@ class TestLearning(unittest.TestCase):
     print (nn.output(inputs[2,:]))
     print (nn.output(inputs[3,:]))
     nn.draw(inputs, outputs, file="unittest_test_learning_3", cleanup=True)
+    print "NN: ", nn.output(inputs)
+    filename = 'draw/ut3-trained-nn.nn'
+    save_object(nn, filename)
+    del nn
+    nnl = load_object(filename)
+    print "NN1: ", nnl.output(inputs)
+    nnl.draw(inputs, outputs, file="unittest_test_learning_3-loaded-nn", cleanup=True)
     assert True == True
