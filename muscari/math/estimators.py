@@ -13,5 +13,10 @@ class MSE(Estimator):
   def __call__(self, A, B):
     #print ("A:", A, "B:", B, "Diff:", np.subtract(A, B), "SqDiff:", np.square(np.subtract(A, B)), "MSE:", np.square(np.subtract(A, B)).mean())
     return np.square(np.subtract(A, B)).mean()
+  def fx(self, A, B):
+    return np.square(np.subtract(A, B)).mean()
+  def dfx(self, A, B):
+    n = A.shape[1] #number of columns
+    return (2*np.subtract(A, B))/n
 
 mse = MSE()

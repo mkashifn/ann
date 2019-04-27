@@ -65,7 +65,7 @@ class Sequential:
   def propagate_back(self, targets):
     layers = self.layers[::-1] # reverse, need to start from output layer
     layer = layers[0]
-    sigma = -(targets - layer.o)*layer.a.dfx(layer.o)
+    sigma = -self.loss.dfx(targets,layer.o)*layer.a.dfx(layer.o)
     old_weights = self.update_layer_weights(layer, sigma, self.eta)
     layers = layers[1:] # other layers
     for layer in layers:
