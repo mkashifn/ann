@@ -96,6 +96,12 @@ class Sequential:
     def increment_gwc():
       self.weight_count += 1
 
+    def reset_gxc():
+      self.layer_count = 0
+      self.weight_count = 1
+
+    reset_gxc()
+
     def draw_cluster(name, length, values, fillcolor="#FFFFFF", subscript="", targets=None):
       names = []
       with graph.subgraph(name='cluster_{name}'.format(name=name)) as c:
