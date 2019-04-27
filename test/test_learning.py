@@ -4,6 +4,7 @@ import numpy as np
 from muscari.network.neuron import Neuron
 from muscari.network.layer import Layer
 from muscari.network.network import Network
+from muscari.network.sequential import Sequential
 from muscari.math.functions import sigmoid
 from muscari.math.estimators import mse
 #python -m unittest discover
@@ -35,7 +36,7 @@ class TestLearning(unittest.TestCase):
     assert True == True
     
   def test_learning_2(self):
-    """Test learning after 5000 epochs.
+    """Test learning after 1000 epochs.
        https://towardsdatascience.com/how-to-build-your-own-neural-network-from-scratch-in-python-68998a08e4f6
     """
     inputs = np.array([[0,0,1],
@@ -53,7 +54,7 @@ class TestLearning(unittest.TestCase):
     #nn.draw(np.array([inputs[0, :]]), np.array([outputs[0,:]]))
     #exit(0)
     #print (nn.output(np.array([inputs[0,:]])))
-    epochs = 5000
+    epochs = 1000
     #for i in range(epochs):
     nn.train(inputs, outputs, epochs)
     print (nn.output(inputs[0,:]))
@@ -62,4 +63,26 @@ class TestLearning(unittest.TestCase):
     print (nn.output(inputs[3,:]))
     #nn.draw(np.array([inputs[0, :]]), np.array([outputs[0,:]]))
     nn.draw(inputs, outputs, file="unittest_test_learning_2", cleanup=True)
+    assert True == True
+
+  def test_learning_3(self):
+    """Test learning after 1500 epochs.
+       https://towardsdatascience.com/how-to-build-your-own-neural-network-from-scratch-in-python-68998a08e4f6
+    """
+    inputs = np.array([[0,0,1],
+                      [0,1,1],
+                      [1,0,1],
+                      [1,1,1]])
+    outputs = np.array([[0],[1],[1],[0]])
+    weights = None
+    nn = Sequential(mse, 1)
+    nn.add_layer(4, sigmoid, 0.0, weights, 3)
+    nn.add_layer(1, sigmoid, 0.0, weights)
+    epochs = 1500
+    nn.train(inputs, outputs, epochs)
+    print (nn.output(inputs[0,:]))
+    print (nn.output(inputs[1,:]))
+    print (nn.output(inputs[2,:]))
+    print (nn.output(inputs[3,:]))
+    nn.draw(inputs, outputs, file="unittest_test_learning_3", cleanup=True)
     assert True == True

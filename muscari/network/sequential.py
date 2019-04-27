@@ -38,8 +38,8 @@ class Sequential:
       layer_input_size = self.layer_input_size
     expected_weights_shape = (layer_input_size, neuron_count)
     if initial_weights is None:
-      x = np.random.rand[0]
-      y = np.random.rand[1]
+      x = expected_weights_shape[0]
+      y = expected_weights_shape[1]
       initial_weights = np.random.rand(x,y)
     if initial_weights.shape != expected_weights_shape:
       warnings.warn("wights matrix is not properly formed, expected {e} vs actual {a}".format(e =expected_weights_shape, a=initial_weights.shape), UserWarning)
@@ -58,6 +58,14 @@ class Sequential:
   def output(self, input):
     return self.feed_forward(input)
 
+  def train(self, inputs, targets, epochs):
+    for i in range(epochs):
+      A = targets
+      B = self.feed_forward(inputs)
+      self.propagate_back(np.array(targets))
+      if (i%100) == 0:
+        print ("Epoch: {i}, Loss: {loss}".format(i=i, loss = self.loss(A, B)))
+
   def update_layer_weights(self, layer, sigma, eta):
     d_weights = np.dot(layer.i.T, sigma) * eta
     new_weights = layer.w - d_weights
@@ -72,8 +80,9 @@ class Sequential:
     old_weights = self.update_layer_weights(layer, sigma, self.eta)
     layers = layers[1:] # other layers
     for layer in layers:
-      sigma = np.dot(sigma, old_weights.T * layer.a.dfx(layer.o))
+      sigma = np.dot(sigma, old_weights.T) * layer.a.dfx(layer.o)
       old_weights = self.update_layer_weights(layer, sigma, self.eta)
+
   def draw(self, inputs, targets, file="sequential", dir="draw", view=True, cleanup=False):
     graph = Digraph(directory='graphs', format='pdf',
                   graph_attr=dict(ranksep='2', rankdir='LR', color='white', splines='line'),

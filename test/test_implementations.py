@@ -28,6 +28,8 @@ class TestImplementations(unittest.TestCase):
       print_output("{} back propagation:".format(i), nn, ss, inputs)
       nno = nn.output(inputs)
       sso = ss.output(inputs)
+      nn.draw(inputs, outputs, "nn-test_implementations_1")
+      ss.draw(inputs, outputs, "ss-test_implementations_1")
       assert np.sum(nno - sso) == 0.0
 
     # *************
