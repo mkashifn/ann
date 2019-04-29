@@ -77,7 +77,7 @@ class Network:
     graph = Digraph(directory='graphs', format='pdf',
                   graph_attr=dict(ranksep='2', rankdir='LR', color='white', splines='line'),
                   node_attr=dict(label='', shape='circle', width='0.1'))
-    graph.attr(label='Hiw')
+
     np_formatter = {'float_kind':lambda x: "%.9g" % x}
 
     def increment_glc():

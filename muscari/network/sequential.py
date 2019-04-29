@@ -10,6 +10,8 @@ class Layer:
     self.b = bias
     self.w = weights
     self.count = weights.shape[1] #number of neurons
+    self.sigma = None
+    self.lto = None # last training outputs
   def output(self, input):
     self.i = input
     self.o = self.a.fx(np.dot(self.i, self.w) + self.b)
@@ -20,57 +22,139 @@ class Sequential:
     self.layers = []
     self.loss = loss
     self.eta = eta # learning rate
-    self.layer_input_size = None #number of inputs for the NEXT layer
+    self.input_layer_size = None #number of neurons in the input layer
+    self.output_layer_size = None #number of neurons in the output layer
 
     self.layers = []
     self.layer_count = 0
     self.weight_count = 1
 
+    self.retraining_required = False
+
+  def weights_initializer(self, initial_weights, required_shape):
+    weights = initial_weights
+    if weights is None:
+      x = required_shape[0]
+      y = required_shape[1]
+      weights = np.random.rand(x,y)
+    if weights.shape != required_shape:
+      warnings.warn("wights matrix is not properly formed, expected {e} vs actual {a}".format(e=required_shape, a=initial_weights.shape), UserWarning)
+      weights.shape = required_shape
+    return weights
+
   def add_layer(self, neuron_count, activation, bias, initial_weights=None, input_size=None):
     # Validate the inputs
-    if self.layer_input_size is None and input_size is None:
+    if self.output_layer_size is None and input_size is None:
       raise ValueError('input_size needs to be defined for the very first layer')
-    if self.layer_input_size is not None and input_size is not None:
+    if self.output_layer_size is not None and input_size is not None:
       raise ValueError('input_size is not required for this layer')
     if input_size is not None:
       layer_input_size = input_size
+      self.input_layer_size = input_size
     else:
-      layer_input_size = self.layer_input_size
+      layer_input_size = self.output_layer_size # current input is the output of last layer
     expected_weights_shape = (layer_input_size, neuron_count)
-    if initial_weights is None:
-      x = expected_weights_shape[0]
-      y = expected_weights_shape[1]
-      initial_weights = np.random.rand(x,y)
-    if initial_weights.shape != expected_weights_shape:
-      warnings.warn("wights matrix is not properly formed, expected {e} vs actual {a}".format(e =expected_weights_shape, a=initial_weights.shape), UserWarning)
-      initial_weights.shape = expected_weights_shape
-    self.layers.append(Layer(activation, bias, initial_weights))
-    self.layer_input_size = neuron_count
+    weights = self.weights_initializer(initial_weights, expected_weights_shape)
+    self.layers.append(Layer(activation, bias, weights))
+    self.output_layer_size = neuron_count
+
+  def add_connections_to_the_left(self, index, additional_neron_count, initial_weights):
+    if index >= len(self.layers):
+      raise ValueError('invalid layer index')
+    layer = self.layers[index]
+    shape = layer.w.shape
+    new_shape = (additional_neron_count, shape[1])
+    weights = self.weights_initializer(initial_weights, new_shape)
+    new_weights = np.append(weights, layer.w, axis = 0)
+    self.input_layer_size += additional_neron_count
+    layer.w = new_weights
+    self.retraining_required = True
+
+  def add_connections_to_the_right(self, index, additional_neron_count, initial_weights):
+    if index >= len(self.layers) - 1: # can not expand output layer
+      raise ValueError('invalid layer index')
+    layer = self.layers[index]
+    shape = layer.w.shape
+    new_shape = (shape[0], additional_neron_count)
+    weights = self.weights_initializer(initial_weights, new_shape)
+    new_weights = np.append(layer.w, weights, axis = 1)
+    self.output_layer_size += additional_neron_count
+    layer.count += additional_neron_count
+    layer.w = new_weights
+    self.retraining_required = True
+
+  def expand_input_layer(self, additional_neron_count, initial_weights=None):
+    if additional_neron_count <= 0 or len(self.layers) <= 0:
+      return 0
+    self.add_connections_to_the_left(0, additional_neron_count, initial_weights)
+
+
+  def expand_layer(self, index, additional_neron_count, initial_weights=None):
+    if additional_neron_count <= 0 or len(self.layers) <= 0:
+      return 0
+    self.add_connections_to_the_right(index, additional_neron_count, initial_weights)
+    self.add_connections_to_the_left(index+1, additional_neron_count, initial_weights)
+
+  def retrain_layer_1(self, inputs, epochs):
+    if self.retraining_required == False:
+      return
+    layer = self.layers[0]
+    targets = layer.lto
+    for i in range(epochs):
+      layer.output(inputs)
+      sigma = -self.loss.dfx(targets,layer.o)*layer.a.dfx(layer.o)
+      nw = self.update_layer_weights(layer, sigma, self.eta)
+    self.retraining_required = False
+
+  def retrain_layer(self, index, inputs, epochs):
+    if self.retraining_required == False:
+      return
+    if index >= len(self.layers) - 1: # can not expand output layer
+      raise ValueError('invalid layer index')
+    targets = self.layers[index + 1].lto
+    for i in range(epochs):
+      layer = self.layers[index + 1]
+      self.feed_forward(inputs)
+      sigma = -self.loss.dfx(targets,layer.o)*layer.a.dfx(layer.o)
+      old_weights = self.update_layer_weights(layer, sigma, self.eta)
+      layer = self.layers[index]
+      sigma = np.dot(sigma, old_weights.T) * layer.a.dfx(layer.o)
+      self.update_layer_weights(layer, sigma, self.eta)
+    self.retraining_required = False
 
   def feed_forward(self, input):
+    if self.retraining_required == True:
+      warnings.warn("Retrain the network using retrain_layer_1() first.", UserWarning)
     output = None
     for l in self.layers:
       output = l.output(input)
       input = output
     self.o = output
     return self.o
-  
+
   def output(self, input):
     return self.feed_forward(input)
 
   def train(self, inputs, targets, epochs):
+    def finish_training(layers):
+      for l in layers:
+        l.lto = l.o
+
+    self.feed_forward(inputs)
     for i in range(epochs):
       A = targets
-      B = self.feed_forward(inputs)
       self.propagate_back(np.array(targets))
+      B = self.feed_forward(inputs)
       if (i%100) == 0:
         print ("Epoch: {i}, Loss: {loss}".format(i=i, loss = self.loss(A, B)))
+    finish_training(self.layers)
 
   def update_layer_weights(self, layer, sigma, eta):
     d_weights = np.dot(layer.i.T, sigma) * eta
     new_weights = layer.w - d_weights
     old_weights = layer.w
     layer.w = new_weights
+    layer.sigma = sigma
     return old_weights
 
   def propagate_back(self, targets):
@@ -87,7 +171,7 @@ class Sequential:
     graph = Digraph(directory='graphs', format='pdf',
                   graph_attr=dict(ranksep='2', rankdir='LR', color='white', splines='line'),
                   node_attr=dict(label='', shape='circle', width='0.1'))
-    graph.attr(label='Hiw')
+
     np_formatter = {'float_kind':lambda x: "%.9g" % x}
 
     def increment_glc():
@@ -136,6 +220,9 @@ class Sequential:
           increment_gwc()
           i += 1
 
+    A = targets
+    B = self.feed_forward(inputs)
+
     src = draw_cluster('input', inputs.shape[1], inputs, "#FFFF00")
     i = 1
     layer_input = inputs
@@ -149,9 +236,9 @@ class Sequential:
 
     layer = self.layers[-1]
     dst = draw_cluster('output', layer.count, layer.output(layer_input), "#00FF00", targets=targets)
+
     draw_connections(src, dst, layer)
-    A = targets
-    B = self.feed_forward(inputs)
+
     tl = self.loss(A, B)
     tl = np.array2string(tl, formatter=np_formatter)
     graph.attr(label='{file}, total loss = {tl}'.format(file=file, tl=tl))
